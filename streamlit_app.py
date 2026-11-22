@@ -12,25 +12,19 @@ def load_model():
 
 model = load_model()
 
-# model ki input size automatically le lo
-_, h, w, _ = model.input_shape
-
-file = st.file_uploader("Image upload karo", type=["jpg", "jpeg", "png"])
+file = st.file_uploader("Skin ki image upload karo", type=["jpg", "jpeg", "png"])
 
 if file:
     img = Image.open(file).convert("RGB")
-    st.image(img, caption="Uploaded image", use_column_width=True)
+    st.image(img, caption="Uploaded image", use_container_width=True)
 
-    x = np.array(img.resize((w, h))) / 255.0
+    x = np.array(img.resize((224, 224))) / 255.0
     x = np.expand_dims(x, axis=0)
 
-    pred = model.predict(x)
-    st.write("Raw prediction:", pred.tolist())
-
-    if pred.shape[-1] == 1:
-        label = "Malignant" if pred[0][0] > 0.5 else "Benign"
+    p = float(model.predict(x)[0][0])
+    if p > 0.5:
+        st.error(f"Malignant (cancer ke asar): {p*100:.1f}%")
     else:
-        label = f"Class {int(np.argmax(pred))}"
-    st.success(f"Result: {label}")
+        st.success(f"Benign (cancer nahi): {(1-p)*100:.1f}%")
 
-st.caption("Yeh sirf educational project hai, medical diagnosis nahi.")
+st.caption("Yeh sirf educational project hai, medical diagnosis nahi. Asli jaanch ke liye doctor se milo.")
