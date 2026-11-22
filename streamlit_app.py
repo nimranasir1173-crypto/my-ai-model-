@@ -1,10 +1,10 @@
 import streamlit as st
 import numpy as np
-from PIL import Image
 import tensorflow as tf
-import os
+from PIL import Image
+from pathlib import Path
 
-# Page configuration
+# Page settings
 st.set_page_config(
     page_title="Skin Cancer Detection",
     page_icon="🔬",
@@ -12,110 +12,134 @@ st.set_page_config(
 )
 
 st.title("🔬 Skin Cancer Detection")
-st.write("Upload a skin image for educational classification.")
+st.write("Upload an image to classify it.")
 
-# Model path
-MODEL_PATH = "skin_cancer_model.keras"
+# Model file
+MODEL_PATH = Path(__file__).parent / "skin_cancer_model.keras"
 
 # Load model
 @st.cache_resource
 def load_model():
-    if not os.path.exists(MODEL_PATH):
-        raise FileNotFoundError(
-            f"Model file not found: {MODEL_PATH}"
-        )
+    model = tf.keras.models.load_model(
+        str(MODEL_PATH),
+        compile=False
+    )
+    return model
 
-    return tf.keras.models.load_model(MODEL_PATH)
+# Model loading
+if not MODEL_PATH.exists():
+    st.error("Model file not found! Check your project folder.")
+    st.stop()
 
-# Load model safely
 try:
     model = load_model()
     st.success("Model loaded successfully!")
 
 except Exception as e:
-    st.error(f"Error loading model: {e}")
+    st.error(f"Model loading failed: {e}")
     st.stop()
 
-# Get model input dimensions
+# Get input size
 try:
-    input_shape = model.input_shape
+    shape = model.input_shape
 
-    if isinstance(input_shape, list):
-        input_shape = input_shape[0]
+    if isinstance(shape, list):
+        shape = shape[0]
 
-    h = int(input_shape[1]) if input_shape[1] else 224
-    w = int(input_shape[2]) if input_shape[2] else 224
+    height = shape[1] or 224
+    width = shape[2] or 224
 
 except Exception as e:
     st.error(f"Input shape error: {e}")
     st.stop()
 
-# Image uploader
-file = st.file_uploader(
-    "Upload Skin Image",
+# Upload image
+uploaded_file = st.file_uploader(
+    "Choose a skin image",
     type=["jpg", "jpeg", "png"]
 )
 
-if file is not None:
+if uploaded_file is not None:
 
     try:
-        # Read image
-        img = Image.open(file).convert("RGB")
+        image = Image.open(uploaded_file).convert("RGB")
 
         st.image(
-            img,
-            caption="Uploaded Skin Image",
+            image,
+            caption="Uploaded Image",
             use_container_width=True
         )
 
-        # Resize image
-        img = img.resize((w, h))
+        # Preprocessing
+        image = image.resize((width, height))
 
-        # Convert image into array
-        x = np.array(img, dtype=np.float32)
+        image_array = np.array(
+            image,
+            dtype=np.float32
+        )
 
-        # Normalize image
-        x = x / 255.0
+        image_array = image_array / 255.0
 
-        # Add batch dimension
-        x = np.expand_dims(x, axis=0)
+        image_array = np.expand_dims(
+            image_array,
+            axis=0
+        )
 
         # Prediction
-        with st.spinner("Analyzing image..."):
-            pred = model.predict(x, verbose=0)
+        if st.button("Detect Skin Cancer"):
 
-        pred = np.asarray(pred)
+            with st.spinner("Processing image..."):
 
-        if pred.ndim != 2 or pred.shape[0] != 1:
-            st.error("Unexpected model output shape.")
-            st.stop()
+                prediction = model.predict(
+                    image_array,
+                    verbose=0
+                )
 
-        st.write("Raw Prediction:", pred.tolist())
+            prediction = np.asarray(prediction)
 
-        # Classification
-        if pred.shape[-1] == 1:
+            if prediction.size == 0:
+                st.error("Model returned an empty prediction.")
 
-            score = float(pred[0][0])
+            elif prediction.ndim == 2 and prediction.shape[-1] == 1:
 
-            if score >= 0.5:
-                label = "Malignant"
+                score = float(prediction[0][0])
+
+                if not np.isfinite(score):
+                    st.error("Invalid prediction returned by model.")
+
+                elif 0 <= score <= 1:
+                    result = "Malignant" if score >= 0.5 else "Benign"
+                    st.subheader(f"Result: {result}")
+                    st.write(f"Model score: {score:.4f}")
+
+                else:
+                    st.error(
+                        "Output is outside the expected probability range. "
+                        "Check the model's final activation."
+                    )
+
+            elif prediction.ndim == 2:
+
+                class_index = int(
+                    np.argmax(prediction[0])
+                )
+
+                st.subheader(
+                    f"Predicted Class: {class_index}"
+                )
+
+                st.write(
+                    f"Model score: {float(np.max(prediction[0])):.4f}"
+                )
+
             else:
-                label = "Benign"
-
-            st.subheader(f"Result: {label}")
-            st.write(f"Model score: {score:.4f}")
-
-        else:
-            class_index = int(np.argmax(pred[0]))
-            st.subheader(f"Predicted Class: {class_index}")
-            st.write(
-                f"Confidence score: {float(np.max(pred[0])):.4f}"
-            )
+                st.error(
+                    f"Unexpected prediction shape: {prediction.shape}"
+                )
 
     except Exception as e:
-        st.error(f"Image prediction error: {e}")
+        st.error(f"Prediction error: {e}")
 
 st.caption(
-    "Educational project only. This application is not "
-    "a medical diagnostic tool."
+    "Educational project only. Not intended for medical diagnosis."
 )
