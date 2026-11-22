@@ -16,7 +16,7 @@ file = st.file_uploader("Skin ki image upload karo", type=["jpg", "jpeg", "png"]
 
 if file:
     img = Image.open(file).convert("RGB")
-    st.image(img, caption="Uploaded image", use_container_width=True)
+    st.image(img, caption="Uploaded image", width=350)
 
     x = np.array(img.resize((224, 224))) / 255.0
     x = np.expand_dims(x, axis=0)
