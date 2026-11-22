@@ -27,4 +27,4 @@ if file:
     else:
         st.success(f"Benign (cancer nahi): {(1-p)*100:.1f}%")
 
-st.caption("Yeh sirf educational project hai, medical diagnosis nahi. Asli jaanch ke liye doctor se milo.")
+st.caption("This is an educational project only, not a medical diagnosis. Please consult a doctor for a proper check-up.")
