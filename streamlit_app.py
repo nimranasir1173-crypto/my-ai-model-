@@ -1,20 +1,22 @@
 import streamlit as st
 import numpy as np
 from PIL import Image, ImageOps
-import tensorflow as tf
 
 st.set_page_config(page_title="Skin Cancer Detection")
 st.title("Skin Cancer Detection")
 
 @st.cache_resource
 def load_model():
-    return tf.keras.models.load_model("skin_cancer_model.keras", compile=False)
+    import tensorflow as tf
+    return tf.keras.models.load_model(
+        "skin_cancer_model.keras", compile=False, safe_mode=False
+    )
 
 try:
     model = load_model()
-except Exception as e:
-    st.error("Model could not be loaded.")
-    st.code(str(e))
+except BaseException as e:
+    st.error("Model could not be loaded. Error details:")
+    st.code(f"{type(e).__name__}: {e}")
     st.stop()
 
 file = st.file_uploader("Upload a skin image", type=["jpg", "jpeg", "png"])
@@ -33,7 +35,7 @@ if file is not None:
         else:
             st.success(f"Benign (no cancer): {(1-p)*100:.1f}%")
     except Exception as e:
-        st.error("Prediction error.")
-        st.code(str(e))
+        st.error("Prediction error:")
+        st.code(f"{type(e).__name__}: {e}")
 
 st.caption("This is an educational project only, not a medical diagnosis. Please consult a doctor for a proper check-up.")
