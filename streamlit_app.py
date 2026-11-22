@@ -1,6 +1,6 @@
 import streamlit as st
 import numpy as np
-from PIL import Image, ImageOps
+from PIL import Image
 import tensorflow as tf
 
 st.set_page_config(page_title="Skin Cancer Detection")
@@ -15,8 +15,8 @@ model = load_model()
 file = st.file_uploader("Skin ki image upload karo", type=["jpg", "jpeg", "png"])
 
 if file:
-   img = ImageOps.exif_transpose(Image.open(file)).convert("RGB")
     st.image(img, caption="Uploaded image", width=350)
+    st.image(img, caption="Uploaded image", use_container_width=True)
 
     x = np.array(img.resize((224, 224))) / 255.0
     x = np.expand_dims(x, axis=0)
